@@ -2,6 +2,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework import status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from django.db.models.query_utils import Q
 from articles.models import Article
 from articles.serializers import ArticleSerializer, ArticleCreateSerializer, ArticleListSerializer, CommentSerializer, CommentCreateSerializer
 
@@ -20,6 +21,16 @@ class ArticleView(APIView):
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+class FeedView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        q = Q()
+        for user in request.user.followings.all():
+            q.add(Q(user=user), q.OR)
+        feeds = Article.objects.filter(q)
+        serializer = ArticleListSerializer(feeds, many=True)
+        return Response(serializer.data)
 
 class ArticleDetailView(APIView):
     def get(self, request, article_id):
